@@ -1,0 +1,10 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "agent": {
+      "path": "demo_agent.graph:build_agent_graph",
+      "description": "AI agent for data processing and file operations with MCP server integration"
+    }
+  },
+  "env": ".env"
+}

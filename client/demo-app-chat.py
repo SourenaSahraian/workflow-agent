@@ -6,42 +6,38 @@ A simple command-line interface for natural language database queries
 with human-in-the-loop approval for query execution.
 """
 
-import sys
 import os
 
-# Load environment variables from .env file
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv()
+
 
 # LangSmith tracing is controlled by environment variables in .env file
 yolo_mode=os.environ.get("YOLLO_MODE", "False")
 
 companyId = os.environ.get("COMPANY_ID", "unknown")
 
-
-
 print(f"yolo_mode ----------: {yolo_mode} ")
 print(f"LANGCHAIN_TRACING_V2: {os.environ.get('LANGCHAIN_TRACING_V2', 'Not set')} ")
-print(f"LANGCHAIN_API_KEY: {os.environ.get('LANGCHAIN_API_KEY', 'Not set')[:10]}...")
+print(f"LANGSMITH_API_KEY: {os.environ.get('LANGSMITH_API_KEY', 'Not set')[:10]}...")
 print(f"LANGCHAIN_PROJECT: {os.environ.get('LANGCHAIN_PROJECT', 'Not set')} ")
 
-# Add the parent directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-# Add the demo-agent directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'demo-agent'))
-
+# Now we can use proper package imports with __init__.py files
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.graph import StateGraph
 from langchain_core.messages import HumanMessage, AIMessageChunk
 from typing import AsyncGenerator
 from config import mcp_config
-from graph import build_agent_graph, PrismaAgentState, ReviewAction
-from langgraph.types import Command
+from demo_agent import build_agent_graph, PrismaAgentState, ReviewAction
+from langgraph.types import Command;
 from langchain_core.runnables.config import RunnableConfig
 import json
 
 
 print(f"companyId loaded from env: {companyId} ")
+
+
+
 
 async def stream_graph_response(
         input: PrismaAgentState | Command, graph: StateGraph, config: dict = {}
