@@ -1,0 +1,440 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model DeletedFiling {
+  id               String         @id @default(uuid())
+  companyTaxYearId String         @map("company_tax_year_id")
+  recordId         String         @map("record_id")
+  deletedAt        DateTime       @map("deleted_at")
+  deletedBy        String         @map("deleted_by")
+  companyTaxYear   CompanyTaxYear @relation(fields: [companyTaxYearId], references: [id])
+
+  @@unique([companyTaxYearId, recordId], name: "unique_company_tax_year_id_record_id")
+  @@index([companyTaxYearId, recordId], name: "idx_company_tax_year_id_record_id")
+  @@map("deleted_filing")
+}
+
+// There is great variablity in filing data across thousands of filings - hence the reason for having  all feilds optional
+model Filing {
+  id                                       Int      @id @default(autoincrement())
+  recordId                                 String   @map("record_id")
+  jurisdictionName                         String?  @map("jurisdiction_name")
+  jurisdictionType                         String?  @map("jurisdiction_type")
+  jurisdictionAbbreviation                 String?  @map("jurisdiction_abbreviation")
+  jurisdictionUrnV1                        String?  @map("jurisdiction_urn_v1")
+  jurisdictionUrn                          String?  @map("jurisdiction_urn")
+  jurisdictionCategory                     String?  @map("jurisdiction_category")
+  entityType                               String?  @map("entity_type")
+  businessEntityTypeUrn                    String?  @map("business_entity_type_urn")
+  taxType                                  String?  @map("tax_type")
+  taxTypeUrn                               String?  @map("tax_type_urn")
+  yearEnd                                  String?  @map("year_end")
+  originalFilingDueDate                    String?  @map("original_filing_due_date")
+  extendedDueDate                          String?  @map("extended_due_date")
+  citations                                String?  @map("citations")
+  formName                                 String?  @map("form_name")
+  formNumber                               String?  @map("form_number")
+  jurisdictionAcceptsEFileCitation         String?  @map("jurisdiction_accepts_e_file_citation")
+  stateAcceptsFederalExtensionCitationLink String?  @map("state_accepts_federal_extension_citation_link")
+  automaticExtensionCitationLink           String?  @map("automatic_extension_citation_link")
+  formLink                                 String?  @map("form_link")
+  filingType                               String?  @map("filing_type")
+  electronicFilingOfExtensionsCitationLink String?  @map("electronic_filing_of_extensions_citation_link")
+  stateAcceptsFederalExtension             String?  @map("state_accepts_federal_extension")
+  jurisdictionAcceptsEFile                 String?  @map("jurisdiction_accepts_e_file")
+  electronicFilingOfExtensions             String?  @map("electronic_filing_of_extensions")
+  stateWebsite                             String?  @map("state_website")
+  taxYear                                  String?  @map("tax_year")
+  year                                     String?  @map("year")
+  automaticExtension                       String?  @map("automatic_extension")
+  formInstructionLink                      String?  @map("form_instruction_link")
+  extensionFormName                        String?  @map("extension_form_name")
+  extensionFormNumber                      String?  @map("extension_form_number")
+  extensionFormLink                        String?  @map("extension_form_link")
+  extensionCitationsLink                   String?  @map("extension_citations_link")
+  extensionStateWebsite                    String?  @map("extension_state_website")
+  createdAt                                DateTime @default(now()) @map("created_at")
+  taxTypeParent                            String?  @map("tax_type_parent")
+
+  @@index([recordId], name: "idx_record_id")
+  @@index([entityType], name: "idx_entity_type")
+  @@index([taxYear], name: "idx_tax_year")
+  @@index([yearEnd], name: "idx_year_end")
+  @@index([jurisdictionUrn], name: "idx_jurisdiction_urn")
+  @@index([jurisdictionUrn, businessEntityTypeUrn, yearEnd], name: "idx_filing_jurisdiction_business_type_year")
+}
+
+//TODO tax year info
+model CompanyTaxYear {
+  id                 String @id @default(uuid())
+  companyId          String @map("company_id")
+  taxYear            String @map("tax_year")
+  applicableTaxTypes Json   @default("{}") @map("applicable_tax_types")
+
+  entity              Entity[]
+  customFiling        CustomFiling[]
+  companyCustomValues CompanyCustomValues[]
+  companyCustomHeader CompanyCustomHeader[]
+  customForms         CustomForm[]
+  deletedFilings      DeletedFiling[]
+  Assignments         Assignments[]
+
+  @@unique([companyId, taxYear], name: "UniqueCompanyIdTaxYear")
+  @@map("company_tax_year")
+}
+
+model DemoModeTracker {
+  companyId    String    @id @map("company_id")
+  status       String
+  enabledBy    Json      @map("enabled_by")
+  enabledDate  DateTime  @map("enabled_date")
+  disabledBy   Json?     @map("disabled_by")
+  disabledDate DateTime? @map("disabled_date")
+  timestamp    DateTime
+
+  @@map("demo_mode_tracker")
+}
+
+model CustomJurisdiction {
+  name     String                     @id
+  entities CustomEntityJurisdiction[]
+
+  @@map("custom_jurisdiction")
+}
+
+// the pivot table establishing many to many relationship between custom jurisdictions and entities
+model CustomEntityJurisdiction {
+  entityRecordId String             @map("entity_record_id")
+  name           String
+  entity         Entity             @relation(fields: [entityRecordId], references: [id], onDelete: Cascade)
+  jurisdiction   CustomJurisdiction @relation(fields: [name], references: [name])
+
+  @@id([entityRecordId, name])
+  @@index([entityRecordId], name: "idx_custom_entity_jurisdictions_entity_record_id")
+  @@map("custom_entity_jurisdiction")
+}
+
+model Entity {
+  id                       String                     @id @default(uuid()) @map("entity_record_id")
+  entityId                 String                     @map("entity_id")
+  companyTaxYearId         String                     @map("company_tax_year_id")
+  name                     String
+  isDemo                   Boolean                    @default(false) @map("is_demo")
+  entityTypeUrn            String                     @map("entity_type_urn")
+  entityTypeName           String                     @map("entity_type_name")
+  entityJurisdiction       EntityJurisdiction[]
+  calendar                 Calendar[]
+  companyTaxYear           CompanyTaxYear             @relation(fields: [companyTaxYearId], references: [id])
+  CustomEntityJurisdiction CustomEntityJurisdiction[]
+
+  @@unique([entityId, companyTaxYearId], name: "UniqueEntityIdYearEnd")
+  @@index([entityId, companyTaxYearId], name: "idx_entity_id_year_end")
+  @@map("entities")
+}
+
+model Jurisdiction {
+  urn          String               @id @map("urn")
+  name         String?              @map("name")
+  abbreviation String               @map("abbreviation")
+  type         String               @map("type")
+  entities     EntityJurisdiction[]
+  urnV2        String?              @map("urn_v2")
+  category     String?              @map("category")
+
+  @@map("jurisdictions")
+}
+
+// the pivot table establishing many to many relationship between jurisdictions and entities
+model EntityJurisdiction {
+  entityRecordId  String       @map("entity_record_id")
+  jurisdictionUrn String       @map("jurisdiction_urn")
+  entity          Entity       @relation(fields: [entityRecordId], references: [id], onDelete: Cascade)
+  jurisdiction    Jurisdiction @relation(fields: [jurisdictionUrn], references: [urn])
+
+  @@id([entityRecordId, jurisdictionUrn])
+  @@index([entityRecordId], name: "idx_entity_jurisdictions_entity_record_id")
+  @@map("entity_jurisdictions")
+}
+
+model Calendar {
+  calendarId     String @id @default(uuid()) @map("calendar_id")
+  entityRecordId String @map("entity_record_id")
+  taxPeriod      String @map("tax_period")
+  yearEnd        String @map("year_end")
+  entity         Entity @relation(fields: [entityRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([entityRecordId, taxPeriod, yearEnd], name: "UniqueEntityCompanyTaxYearYearEnd")
+  @@index([entityRecordId], name: "idx_calendar_entity_record_id")
+  @@map("calendars")
+}
+
+//Key take away , enforces that any non-null formId must exist in the CustomForm table.
+
+model CustomFiling {
+  recordId         String         @map("record_id")
+  compositeKey     String         @map("composite_key")
+  companyTaxYearId String         @map("company_tax_year_id")
+  activeFormRef    String?        @map("active_form_ref") @db.Uuid
+  entityName       String         @map("entity_name")
+  entityType       String         @map("entity_type")
+  filingType       String         @map("filing_type")
+  jurisdiction     String         @map("jurisdiction")
+  timestamp        DateTime       @default(now())
+  form             CustomForm?    @relation(fields: [activeFormRef, companyTaxYearId], references: [formId, companyTaxYearId])
+  companyTaxYear   CompanyTaxYear @relation(fields: [companyTaxYearId], references: [id])
+  entityId         String?        @map("entity_id")
+  isAddedRow       Boolean?       @default(false) @map("is_added_row")
+
+  @@id([recordId, companyTaxYearId])
+  @@index([compositeKey, companyTaxYearId], name: "index_compositeKey_companyId")
+  @@map("custom_filings")
+}
+
+model CustomForm {
+  formId           String         @map("form_id") @db.Uuid
+  compositeKey     String         @map("composite_key")
+  companyTaxYearId String         @map("company_tax_year_id")
+  formInfo         Json           @map("form_info")
+  createdBy        String         @map("created_by")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedBy        String?        @map("updated_by")
+  updatedAt        DateTime?      @map("updated_at")
+  customFilings    CustomFiling[]
+  companyTaxYear   CompanyTaxYear @relation(fields: [companyTaxYearId], references: [id])
+  datalakeRecordId String?        @map("datalake_record_id")
+
+  //@@unique([companyId, compositeKey], name: "unique_company_composite_key") //TODO commenting in light of recent issue with estimates as this combo may not be unique
+  @@id([formId, companyTaxYearId])
+  @@index([compositeKey], name: "idx_composite_key")
+  @@map("custom_forms")
+}
+
+model CompanyCustomValues {
+  id               String         @id @default(uuid())
+  companyTaxYearId String         @map("company_tax_year_id")
+  recordId         String         @map("record_id")
+  customValues     Json           @map("custom_values")
+  overriddenFields Json?          @map("overridden_fields")
+  companyTaxYear   CompanyTaxYear @relation(fields: [companyTaxYearId], references: [id])
+
+  @@unique([companyTaxYearId, recordId], name: "UniqueTaxYearRecordId")
+  @@index([companyTaxYearId], name: "idx_custom_company_tax_year")
+  @@map("company_custom_values")
+}
+
+model CompanySettings {
+  companyId              String  @id @map("company_id")
+  subscriptionType       String  @map("subscription_type")
+  defaultYear            String  @map("default_year")
+  enableChangePriorYears Boolean @default(false) @map("enable_change_prior_years")
+
+  userPreferences UserPreferences[]
+
+  @@map("company_settings")
+}
+
+model CompanyCustomHeader {
+  id               String         @id @default(uuid())
+  companyTaxYearId String         @map("company_tax_year_id")
+  title            String
+  tooltip          String?
+  placeholder      String?
+  headerType       String?        @map("header_type")
+  rowType          String?        @map("row_type")
+  align            String?
+  isEditable       Boolean?       @map("is_editable")
+  isSelectable     Boolean?       @map("is_selectable")
+  companyTaxYear   CompanyTaxYear @relation(fields: [companyTaxYearId], references: [id])
+
+  @@index([companyTaxYearId], name: "idx_company_custom_header_tax_year")
+  @@map("company_custom_header")
+}
+
+model UserPreferences {
+  id                        String          @id @default(uuid())
+  companyId                 String          @map("company_id")
+  userId                    String          @map("user_id")
+  filters                   Json
+  sortings                  Json?
+  dashboardFilters          Json?           @map("dashboard_filters")
+  isEmailNotificationActive Boolean         @default(false) @map("is_email_notification_active")
+  selectedYear              String?         @map("selected_year")
+  company                   CompanySettings @relation(fields: [companyId], references: [companyId])
+
+  @@unique([companyId, userId], name: "unique_user_pref_comp_user")
+  @@index([companyId, userId], name: "idx_user_pref_comp_user")
+  @@map("user_preferences")
+}
+
+model Filings {
+  companyTaxYearId                         String   @map("company_tax_year_id")
+  recordId                                 String   @map("record_id")
+  companyId                                String   @map("company_id")
+  taxYear                                  String   @map("tax_year")
+  entityName                               String   @map("entity_name")
+  entityRecordId                           String?  @map("entity_record_id")
+  entityId                                 String?  @map("entity_id")
+  entityType                               String?  @map("entity_type")
+  businessEntityTypeUrn                    String?  @map("business_entity_type_urn")
+  taxType                                  String?  @map("tax_type")
+  taxTypeUrn                               String?  @map("tax_type_urn")
+  yearEnd                                  String?  @map("year_end")
+  citations                                String?  @map("citations")
+  formName                                 String?  @map("form_name")
+  formNumber                               String?  @map("form_number")
+  jurisdictionAcceptsFile                  String?  @map("jurisdiction_accepts_e_file")
+  jurisdictionAcceptsFileCitation          String?  @map("jurisdiction_accepts_e_file_citation")
+  formLink                                 String?  @map("form_link")
+  formInstructionLink                      String?  @map("form_instruction_link")
+  extensionFormName                        String?  @map("extension_form_name")
+  extensionFormNumber                      String?  @map("extension_form_number")
+  automaticExtension                       String?  @map("automatic_extension")
+  automaticExtensionCitationLink           String?  @map("automatic_extension_citation_link")
+  stateAcceptsFederalExtension             String?  @map("state_accepts_federal_extension")
+  stateAcceptsFederalExtensionCitationLink String?  @map("state_accepts_federal_extension_citation_link")
+  electronicFilingOfExtensions             String?  @map("electronic_filing_of_extensions")
+  electronicFilingOfExtensionsCitationLink String?  @map("electronic_filing_of_extensions_citation_link")
+  extensionFormLink                        String?  @map("extension_form_link")
+  extensionCitationsLink                   String?  @map("extension_citations_link")
+  jurisdictionName                         String?  @map("jurisdiction_name")
+  jurisdictionUrn                          String?  @map("jurisdiction_urn")
+  jurisdictionAbbreviation                 String?  @map("jurisdiction_abbreviation")
+  jurisdictionCategory                     String?  @map("jurisdiction_category")
+  jurisdictionType                         String?  @map("jurisdiction_type")
+  originalFilingDueDate                    String?  @map("original_filing_due_date")
+  extendedDueDate                          String?  @map("extended_due_date")
+  filingType                               String?  @map("filing_type")
+  activeFormRef                            String?  @map("active_form_ref")
+  customValues                             Json?    @map("custom_values")
+  isCustom                                 Boolean  @default(false) @map("is_custom")
+  isDemo                                   Boolean  @default(false) @map("is_demo")
+  isDeleted                                Boolean  @default(false) @map("is_deleted")
+  isFormAutomated                          Boolean  @default(true) @map("is_form_automated")
+  taxTypeParent                            String?  @map("tax_type_parent")
+  isOverriden                              Boolean? @map("is_overriden")
+  assigneeName                             String?  @map("assignee_name")
+  signOffCount                             Int      @default(0) @map("sign_off_count")
+  overriddenFields                         Json?    @map("overridden_fields")
+
+  @@unique([companyTaxYearId, recordId], name: "UniqueFilingsCtyRid")
+  @@index([companyTaxYearId], name: "idx_filings_cty")
+  @@index([taxTypeParent], name: "idx_filings_ttp")
+  @@index([jurisdictionCategory], name: "idx_filings_jc")
+  @@map("filings")
+}
+
+model FilingsSnapshot {
+  companyTaxYearId                         String   @map("company_tax_year_id")
+  recordId                                 String   @map("record_id")
+  companyId                                String   @map("company_id")
+  taxYear                                  String   @map("tax_year")
+  entityName                               String   @map("entity_name")
+  entityRecordId                           String?  @map("entity_record_id")
+  entityId                                 String?  @map("entity_id")
+  entityType                               String?  @map("entity_type")
+  businessEntityTypeUrn                    String?  @map("business_entity_type_urn")
+  taxType                                  String?  @map("tax_type")
+  taxTypeUrn                               String?  @map("tax_type_urn")
+  yearEnd                                  String?  @map("year_end")
+  citations                                String?  @map("citations")
+  formName                                 String?  @map("form_name")
+  formNumber                               String?  @map("form_number")
+  jurisdictionAcceptsFile                  String?  @map("jurisdiction_accepts_e_file")
+  jurisdictionAcceptsFileCitation          String?  @map("jurisdiction_accepts_e_file_citation")
+  formLink                                 String?  @map("form_link")
+  formInstructionLink                      String?  @map("form_instruction_link")
+  extensionFormName                        String?  @map("extension_form_name")
+  extensionFormNumber                      String?  @map("extension_form_number")
+  automaticExtension                       String?  @map("automatic_extension")
+  automaticExtensionCitationLink           String?  @map("automatic_extension_citation_link")
+  stateAcceptsFederalExtension             String?  @map("state_accepts_federal_extension")
+  stateAcceptsFederalExtensionCitationLink String?  @map("state_accepts_federal_extension_citation_link")
+  electronicFilingOfExtensions             String?  @map("electronic_filing_of_extensions")
+  electronicFilingOfExtensionsCitationLink String?  @map("electronic_filing_of_extensions_citation_link")
+  extensionFormLink                        String?  @map("extension_form_link")
+  extensionCitationsLink                   String?  @map("extension_citations_link")
+  jurisdictionName                         String?  @map("jurisdiction_name")
+  jurisdictionUrn                          String?  @map("jurisdiction_urn")
+  jurisdictionAbbreviation                 String?  @map("jurisdiction_abbreviation")
+  jurisdictionCategory                     String?  @map("jurisdiction_category")
+  jurisdictionType                         String?  @map("jurisdiction_type")
+  originalFilingDueDate                    String?  @map("original_filing_due_date")
+  extendedDueDate                          String?  @map("extended_due_date")
+  filingType                               String?  @map("filing_type")
+  activeFormRef                            String?  @map("active_form_ref")
+  customValues                             Json?    @map("custom_values")
+  isCustom                                 Boolean  @default(false) @map("is_custom")
+  isDemo                                   Boolean  @default(false) @map("is_demo")
+  isDeleted                                Boolean  @default(false) @map("is_deleted")
+  isFormAutomated                          Boolean  @default(true) @map("is_form_automated")
+  taxTypeParent                            String?  @map("tax_type_parent")
+  isOverriden                              Boolean? @map("is_overriden")
+  timestamp                                DateTime @default(now()) @map("created_at")
+  assigneeName                             String?  @map("assignee_name")
+  signOffCount                             Int      @default(0) @map("sign_off_count")
+  overriddenFields                         Json?    @map("overridden_fields")
+
+  @@unique([companyTaxYearId, recordId], name: "UniqueSnapShotCtyRid")
+  @@index([companyTaxYearId], name: "idx_snapshot_cty")
+  @@index([taxTypeParent], name: "idx_snapshot_ttp")
+  @@index([jurisdictionCategory], name: "idx_snapshot_jc")
+  @@map("filings_snapshot")
+}
+
+model Assignments {
+  id               String   @id @default(uuid())
+  companyTaxYearId String   @map("company_tax_year_id")
+  recordId         String   @map("record_id")
+  assignorId       String   @map("assignor_id")
+  assigneeId       String?  @map("assignee_id")
+  assignedAt       DateTime @default(now()) @map("assigned_at")
+
+  companyTaxYear CompanyTaxYear @relation(fields: [companyTaxYearId], references: [id])
+  assignor       Users          @relation("AssignorAssignments", fields: [assignorId], references: [id])
+  assignee       Users?         @relation("AssigneeAssignments", fields: [assigneeId], references: [id])
+
+  @@unique([companyTaxYearId, recordId], name: "unique_company_tax_year_id_record_id")
+  @@index([companyTaxYearId], name: "idx_company_tax_year_id")
+  @@index([assignedAt], name: "idx_assignedAt")
+  @@map("assignments")
+}
+
+model Users {
+  id        String @id @default(uuid())
+  userId    String @unique @map("user_id")
+  firstName String @map("first_name")
+  lastName  String @map("last_name")
+  role      String @map("role")
+
+  assignorAssignments Assignments[] @relation("AssignorAssignments")
+  assigneeAssignments Assignments[] @relation("AssigneeAssignments")
+  signedOffRecords    SignOffs[]    @relation("SignorId")
+
+  @@index([userId], name: "idx_user_id")
+  @@map("users")
+}
+
+model SignOffs {
+  id               String   @id @default(uuid())
+  companyTaxYearId String   @map("company_tax_year_id")
+  recordId         String   @map("record_id")
+  signorId         String   @map("signor_id")
+  signedOffAt      DateTime @default(now()) @map("signed_off_at")
+  metaData         Json     @map("metadata") // include status and form info, more flexibility when storing other info 
+  comments         String?  @map("comments")
+
+  signor Users? @relation("SignorId", fields: [signorId], references: [id])
+
+  @@index([companyTaxYearId, recordId], name: "idx_signoffs_cty_record")
+  @@map("sign_offs")
+}

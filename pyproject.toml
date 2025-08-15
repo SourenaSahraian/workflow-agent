@@ -1,0 +1,21 @@
+[project]
+name = "agents"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "langsmith>=0.1.0",
+    "langchain-core",
+    "langchain-openai",
+    "langchain-mcp-adapters",
+    "langgraph",
+    "python-dotenv",
+    "asyncpg",
+    "mcp",
+    "fastmcp",
+    "nest-asyncio",
+    "ipython>=9.4.0",
+    "httpx[http2]>=0.28.1",
+    "certifi>=2025.8.3",
+]

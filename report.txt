@@ -1,0 +1,29 @@
+Last 4 filings records for company ID 990000031 sorted by original_filing_due_date descending:
+
+1. Record ID: a9113eb0-52ad-4752-8394-d12db2f89e4c#ct3051
+   Entity Name: Tunel Vision1
+   Tax Year: 2024
+   Jurisdiction: Alaska
+   Filing Type: Q1 Estimate
+   Original Filing Due Date: NULL
+
+2. Record ID: a9113eb0-52ad-4752-8394-d12db2f89e4c#ct7109
+   Entity Name: Tunel Vision1
+   Tax Year: 2024
+   Jurisdiction: Alaska
+   Filing Type: Return
+   Original Filing Due Date: NULL
+
+3. Record ID: 5f8bda31-3dbb-4f21-b6f1-4be1399d9695
+   Entity Name: Moonligh Sonata Corp.1
+   Tax Year: 2024
+   Jurisdiction: Dayton, Ohio
+   Filing Type: Return
+   Original Filing Due Date: NULL
+
+4. Record ID: a9113eb0-52ad-4752-8394-d12db2f89e4c#ct3053
+   Entity Name: Tunel Vision1
+   Tax Year: 2024
+   Jurisdiction: Alaska
+   Filing Type: Q1 Estimate
+   Original Filing Due Date: NULL

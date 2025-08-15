@@ -1,0 +1,30 @@
+{
+  "filesystem": {
+    "command": "docker",
+    "args": [
+      "run",
+      "-i",
+      "--rm",
+      "--mount",
+      "type=bind,src=${WORKSPACE},dst=/projects",
+      "mcp/filesystem",
+      "/projects"
+    ],
+    "transport": "stdio"
+  },
+  "prisma": {
+    "command": "uv",
+    "args": [
+      "run",
+      "--directory",
+      "/Users/sj124894/playground/agents",
+      "python",
+      "/Users/sj124894/playground/agents/mcp-sever/prisma_server.py"
+    ],
+    "transport": "stdio",
+    "env": {
+      "DATABASE_URL": "${DATABASE_URL}",
+      "PRISMA_SCHEMA_PATH": "/Users/sj124894/playground/agents/schema.prisma"
+    }
+  }
+}
