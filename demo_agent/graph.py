@@ -1,3 +1,5 @@
+from asyncio import threads
+import time
 from pydantic import BaseModel
 from typing import Annotated, List, Literal
 from enum import Enum
@@ -43,6 +45,8 @@ class PrismaAgentState(BaseModel):
     protected_tools: List[str] = [
         "executeQuery"
     ]
+    attempt:int = 0
+    max_attempts:int = 3
     yolo_mode: bool = True
 
 
@@ -129,6 +133,69 @@ Generate appropriate SQL queries for user requests and ALWAYS seek human approva
         state.messages = state.messages + [response]
         return state
     
+
+
+
+    def tool_fall_back_node(state: PrismaAgentState):
+        return {}
+
+
+    def exponential_fallback(attempt:int):
+        """"TODO put this in a util or something"""
+        attempt =attempt or 1
+        wait = min(2**(attempt - 1),3)
+        time.sleep(wait)    
+
+
+    def retry_node(state):
+        maxtry = state.max_attempts
+        # Get the message from 2 steps ago
+        prev_msg = state.messages[-2] if len(state.messages) >= 2 else None
+
+        # Check if it was an AIMessage with a tool call
+        if isinstance(prev_msg, AIMessage) and getattr(prev_msg, "tool_calls", None):
+            for attempt in range(state.attempt, maxtry):
+                print(f"Retry attempt {attempt+1}")
+                exponential_fallback(attempt+1)
+                ai = AIMessage(
+                    content=prev_msg.content,
+                    tool_calls=prev_msg.tool_calls
+                )
+
+                # append replayed AIMessage so ToolNode runs it again
+                state.messages.append(ai)
+                state.attempt += 1
+
+        return {"messages": state.messages, "attempt": state.attempt}
+
+
+
+    """"
+    based on https://langchain-ai.github.io/langgraph/how-tos/tool-calling/#handle-errors
+    the format be like :
+            {'messages': [
+            ToolMessage(
+                content="Error: ValueError('The ultimate error')\n Please fix your mistakes.",
+                name='multiply',
+                tool_call_id='tool_call_id',
+                status='error'
+            )
+        ]}
+            """
+    def tool_post_processer_router(state: PrismaAgentState):
+            last_message = state.messages[-1]
+            max_try = state.max_attempts
+            attempt = state.attempt
+
+            if isinstance(last_message, ToolMessage) and getattr(last_message, "status", None) == "error":
+                content = last_message.content
+                if isinstance(content, str) and ("timeout" in content) and attempt < max_try:
+                    return "retry"
+                else:
+                    return "fallback"
+            else:
+                return "OK"  
+
     async def human_query_review_node(state: PrismaAgentState) -> Command[Literal["assistant_node", "tools"]]:
         """Human review node for database query execution approval"""
 
@@ -217,13 +284,43 @@ Generate appropriate SQL queries for user requests and ALWAYS seek human approva
     builder.add_node(assistant_node)
     builder.add_node(human_query_review_node)
     builder.add_node("tools", ToolNode(tools))
-
+    builder.add_node("retry", retry_node)
+    builder.add_node("fallback", tool_fall_back_node)
     builder.add_edge(START, "assistant_node")
     builder.add_conditional_edges("assistant_node", assistant_router, ["tools", "human_query_review_node", END])
-    builder.add_edge("tools", "assistant_node")
+    #builder.add_edge("tools", "assistant_node")
+    builder.add_conditional_edges("tools", "tool_post_processer_router", {
+        "retry": "retry",
+        "OK": "assistant_node",
+        "fallback": tool_fall_back_node
+    })
+
+    builder.add_edge("fallback", "assistant_node")
 
     # Checkpointing is required for human-in-the-loop!
     return builder.compile(checkpointer=MemorySaver())
+
+
+def create_graph_for_studio():
+    """
+    Create and return a compiled graph for LangGraph Studio.
+    This function builds a simplified graph for studio visualization.
+    """
+    # For studio, we'll build a simplified version without external dependencies
+    # This avoids async initialization issues in the studio environment
+    
+    # Create minimal tools list for studio
+    from langchain_core.tools import tool
+    
+    @tool
+    def sample_query_tool(query: str) -> str:
+        """Execute a sample database query (studio mode)."""
+        return f"Query executed: {query}"
+    
+    tools = [sample_query_tool]
+    companyId = "studio-mode"
+    
+    return build_agent_graph(tools=tools, resources=[], companyId=companyId)
 
 
 def compile_and_display_graph():

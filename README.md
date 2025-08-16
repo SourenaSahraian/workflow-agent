@@ -1,3 +1,17 @@
+---
+
+## How to run:
+
+uv run -m client.demo-app-chat
+
+## update certs for langsmith
+
+uv add --upgrade certifi
+
+## run langgraph stdio
+
+uv run langgraph dev
+
 {
 "recordIds": [
 "238b934d-a9e1-48d3-a2f8-7e39429ffdb7",

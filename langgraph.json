@@ -2,7 +2,7 @@
   "dependencies": ["."],
   "graphs": {
     "agent": {
-      "path": "demo_agent.graph:build_agent_graph",
+      "path": "demo_agent.graph:create_graph_for_studio",
       "description": "AI agent for data processing and file operations with MCP server integration"
     }
   },
