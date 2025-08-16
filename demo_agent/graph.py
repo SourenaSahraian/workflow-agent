@@ -289,13 +289,14 @@ Generate appropriate SQL queries for user requests and ALWAYS seek human approva
     builder.add_edge(START, "assistant_node")
     builder.add_conditional_edges("assistant_node", assistant_router, ["tools", "human_query_review_node", END])
     #builder.add_edge("tools", "assistant_node")
-    builder.add_conditional_edges("tools", "tool_post_processer_router", {
+    builder.add_conditional_edges("tools", tool_post_processer_router, {
         "retry": "retry",
         "OK": "assistant_node",
-        "fallback": tool_fall_back_node
+        "fallback": "fallback"
     })
 
     builder.add_edge("fallback", "assistant_node")
+    builder.add_edge("retry", "tools")
 
     # Checkpointing is required for human-in-the-loop!
     return builder.compile(checkpointer=MemorySaver())
